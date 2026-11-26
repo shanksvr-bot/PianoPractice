@@ -379,3 +379,215 @@ stopButton.addEventListener(
   "click",
   stopListening
 );
+// ======================================
+// SHEET MUSIC PDF VIEWER
+// ======================================
+
+let pdfDocument = null;
+let currentPage = 1;
+let renderingPDF = false;
+let pendingPage = null;
+
+const pdfUpload = document.getElementById("pdfUpload");
+const pdfMessage = document.getElementById("pdfMessage");
+const pdfViewer = document.getElementById("pdfViewer");
+
+const pdfCanvas = document.getElementById("pdfCanvas");
+const pdfContext = pdfCanvas.getContext("2d");
+
+const previousPage = document.getElementById("previousPage");
+const nextPage = document.getElementById("nextPage");
+const pageNumber = document.getElementById("pageNumber");
+
+
+// Upload PDF
+
+pdfUpload.addEventListener("change", async function(event) {
+
+  const file = event.target.files[0];
+
+  if (!file) return;
+
+  if (file.type !== "application/pdf") {
+    pdfMessage.textContent = "Please select a PDF file.";
+    return;
+  }
+
+  if (!window.pdfjsLib) {
+    pdfMessage.textContent = "PDF viewer library failed to load.";
+    return;
+  }
+
+  try {
+
+    pdfMessage.textContent = "Loading sheet music...";
+
+    pdfViewer.hidden = true;
+
+    const fileData = await file.arrayBuffer();
+
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(fileData)
+    });
+
+    const loadedDocument = await loadingTask.promise;
+
+    pdfDocument = loadedDocument;
+    currentPage = 1;
+
+    pdfViewer.hidden = false;
+
+    pdfMessage.textContent =
+      file.name + " loaded successfully.";
+
+    await renderPDFPage(currentPage);
+
+  } catch(error) {
+
+    console.error(error);
+
+    pdfMessage.textContent =
+      "Unable to load PDF: " + error.message;
+
+    pdfDocument = null;
+    pdfViewer.hidden = true;
+
+  }
+
+});
+
+
+// Render selected PDF page
+
+async function renderPDFPage(pageNumberToRender) {
+
+  if (!pdfDocument) return;
+
+  if (renderingPDF) {
+    pendingPage = pageNumberToRender;
+    return;
+  }
+
+  renderingPDF = true;
+
+  try {
+
+    const page = await pdfDocument.getPage(
+      pageNumberToRender
+    );
+
+    const containerWidth =
+      pdfCanvas.parentElement.clientWidth - 10;
+
+    const originalViewport = page.getViewport({
+      scale: 1
+    });
+
+    const scale = Math.min(
+      containerWidth / originalViewport.width,
+      2
+    );
+
+    const viewport = page.getViewport({
+      scale: scale
+    });
+
+    const pixelRatio = Math.min(
+      window.devicePixelRatio || 1,
+      2
+    );
+
+    pdfCanvas.width = Math.floor(
+      viewport.width * pixelRatio
+    );
+
+    pdfCanvas.height = Math.floor(
+      viewport.height * pixelRatio
+    );
+
+    pdfCanvas.style.width = viewport.width + "px";
+    pdfCanvas.style.height = viewport.height + "px";
+
+    const renderContext = {
+      canvasContext: pdfContext,
+      viewport: viewport,
+      transform: pixelRatio === 1
+        ? null
+        : [pixelRatio, 0, 0, pixelRatio, 0, 0]
+    };
+
+    await page.render(renderContext).promise;
+
+    currentPage = pageNumberToRender;
+
+    pageNumber.textContent =
+      "Page " + currentPage +
+      " of " + pdfDocument.numPages;
+
+    previousPage.disabled = currentPage <= 1;
+
+    nextPage.disabled =
+      currentPage >= pdfDocument.numPages;
+
+  } catch(error) {
+
+    console.error("PDF rendering error:", error);
+
+    pdfMessage.textContent =
+      "Unable to display this page.";
+
+  } finally {
+
+    renderingPDF = false;
+
+    if (pendingPage !== null) {
+
+      const nextPageToRender = pendingPage;
+      pendingPage = null;
+
+      renderPDFPage(nextPageToRender);
+
+    }
+
+  }
+
+}
+
+
+// Page navigation
+
+previousPage.addEventListener("click", function() {
+
+  if (pdfDocument && currentPage > 1) {
+    renderPDFPage(currentPage - 1);
+  }
+
+});
+
+nextPage.addEventListener("click", function() {
+
+  if (
+    pdfDocument &&
+    currentPage < pdfDocument.numPages
+  ) {
+    renderPDFPage(currentPage + 1);
+  }
+
+});
+
+
+// Re-render when screen orientation or size changes.
+
+let pdfResizeTimer;
+
+window.addEventListener("resize", function() {
+
+  if (!pdfDocument) return;
+
+  clearTimeout(pdfResizeTimer);
+
+  pdfResizeTimer = setTimeout(function() {
+    renderPDFPage(currentPage);
+  }, 300);
+
+});
