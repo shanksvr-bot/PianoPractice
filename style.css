@@ -212,3 +212,94 @@ footer {
     font-size: 85px;
   }
 }
+.music-panel {
+  background: #1c2935;
+  border: 1px solid #344452;
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 22px;
+}
+
+.music-label {
+  font-size: 12px;
+  color: #83e5b5;
+  background: #174b3a;
+  padding: 7px 12px;
+  border-radius: 20px;
+}
+
+.upload-button {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  margin-top: 18px;
+  background: #259b78;
+  color: white;
+  text-align: center;
+  font-weight: bold;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.pdf-message {
+  color: #aebdca;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 15px;
+}
+
+.pdf-viewer {
+  margin-top: 20px;
+}
+
+.pdf-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.pdf-controls button {
+  background: #344452;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.pdf-controls button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+#pageNumber {
+  color: #bdcbd6;
+  font-size: 13px;
+}
+
+.pdf-page-container {
+  background: #ffffff;
+  border-radius: 5px;
+  overflow: hidden;
+  padding: 5px;
+}
+
+#pdfCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 500px) {
+  .music-panel {
+    padding: 18px;
+  }
+
+  .pdf-controls button {
+    padding: 12px 9px;
+    font-size: 12px;
+  }
+}
