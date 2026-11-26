@@ -1,0 +1,10 @@
+{
+  "name": "PianoPractice",
+  "short_name": "PianoPractice",
+  "description": "Real-time piano practice and note recognition",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#101820",
+  "theme_color": "#17212b",
+  "orientation": "any"
+}
