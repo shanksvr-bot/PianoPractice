@@ -256,7 +256,7 @@ function analyzeAudio(timestamp) {
       noteIndicator.style.width = "0%";
       currentNote = null;
     }
-  
+  }
 }
 
 
