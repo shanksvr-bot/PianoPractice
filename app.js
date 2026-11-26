@@ -312,19 +312,49 @@ async function startListening() {
     message.textContent =
       "Microphone active. Play a note on your keyboard.";
 
-    analyzeAudio();
+// Main audio processing loop.
 
-  } catch (error) {
+function analyzeAudio(timestamp) {
 
-    console.error(error);
+  if (!running) return;
 
-    message.textContent =
-      "Microphone error: " + error.message;
+  animationFrame = requestAnimationFrame(analyzeAudio);
 
-    stopListening();
+  // Process audio approximately 11 times per second.
+  if (timestamp - lastAnalysis < 90) {
+    return;
+  }
+
+  lastAnalysis = timestamp;
+
+  analyser.getFloatTimeDomainData(audioBuffer);
+
+  const result = detectPitch(
+    audioBuffer,
+    audioContext.sampleRate
+  );
+
+  if (result && result.clarity > 0.65) {
+
+    displayNote(result);
+
+  } else {
+
+    if (timestamp - lastDetectedTime > 250) {
+      lastPracticeMidi = null;
+    }
+
+    if (timestamp - lastDetectedTime > 500) {
+
+      noteDisplay.textContent = "--";
+      frequencyDisplay.textContent = "0.0 Hz";
+      confidenceDisplay.textContent = "Waiting for a note...";
+      noteIndicator.style.width = "0%";
+
+      currentNote = null;
+    }
   }
 }
-
 
 // Stop microphone.
 
