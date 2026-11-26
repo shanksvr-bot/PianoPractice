@@ -219,7 +219,6 @@ processPracticeNote(note);
 }
 
 
-// Main audio processing loop.
 
 // Main audio processing loop.
 
@@ -266,7 +265,6 @@ function analyzeAudio(timestamp) {
 
 // Start microphone.
 
-// Start microphone.
 
 async function startListening() {
 
@@ -318,7 +316,7 @@ async function startListening() {
     message.textContent =
       "Microphone active. Play a note on your keyboard.";
 
-    analyzeAudio();
+    animationFrame = requestAnimationFrame(analyzeAudio);
 
   } catch (error) {
 
