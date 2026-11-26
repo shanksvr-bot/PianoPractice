@@ -221,13 +221,13 @@ processPracticeNote(note);
 
 // Main audio processing loop.
 
+// Main audio processing loop.
+
 function analyzeAudio(timestamp) {
 
   if (!running) return;
 
   animationFrame = requestAnimationFrame(analyzeAudio);
-
-  // Process audio approximately 11 times per second.
 
   if (timestamp - lastAnalysis < 90) {
     return;
@@ -245,19 +245,23 @@ function analyzeAudio(timestamp) {
   if (result && result.clarity > 0.65) {
 
     displayNote(result);
-  } else if (timestamp - lastDetectedTime > 250) {
 
-    lastPracticeMidi = null;
+  } else {
+
+    if (timestamp - lastDetectedTime > 250) {
+      lastPracticeMidi = null;
+    }
 
     if (timestamp - lastDetectedTime > 500) {
+
       noteDisplay.textContent = "--";
       frequencyDisplay.textContent = "0.0 Hz";
       confidenceDisplay.textContent = "Waiting for a note...";
       noteIndicator.style.width = "0%";
+
       currentNote = null;
     }
   }
-}
 }
 
 // Start microphone.
