@@ -200,7 +200,7 @@ function displayNote(result) {
 
   currentNote = note.name;
   lastDetectedTime = performance.now();
-
+processPracticeNote(note);
   noteDisplay.textContent = note.name;
 
   frequencyDisplay.textContent =
@@ -245,16 +245,18 @@ function analyzeAudio(timestamp) {
   if (result && result.clarity > 0.65) {
 
     displayNote(result);
+  } else if (timestamp - lastDetectedTime > 250) {
 
-  } else if (timestamp - lastDetectedTime > 500) {
+    lastPracticeMidi = null;
 
-    noteDisplay.textContent = "--";
-    frequencyDisplay.textContent = "0.0 Hz";
-    confidenceDisplay.textContent = "Waiting for a note...";
-    noteIndicator.style.width = "0%";
-
-    currentNote = null;
-  }
+    if (timestamp - lastDetectedTime > 500) {
+      noteDisplay.textContent = "--";
+      frequencyDisplay.textContent = "0.0 Hz";
+      confidenceDisplay.textContent = "Waiting for a note...";
+      noteIndicator.style.width = "0%";
+      currentNote = null;
+    }
+  
 }
 
 
@@ -593,3 +595,155 @@ window.addEventListener("resize", function() {
   }, 300);
 
 });
+// ======================================
+// PIANO PRACTICE ENGINE - TEST MODE
+// ======================================
+
+const practiceSequence = [
+  { name: "C4", midi: 60 },
+  { name: "D4", midi: 62 },
+  { name: "E4", midi: 64 },
+  { name: "F4", midi: 65 },
+  { name: "G4", midi: 67 }
+];
+
+const practiceSequenceDisplay =
+  document.getElementById("practiceSequence");
+
+const practiceFeedback =
+  document.getElementById("practiceFeedback");
+
+const practiceProgress =
+  document.getElementById("practiceProgress");
+
+const startPracticeButton =
+  document.getElementById("startPractice");
+
+const resetPracticeButton =
+  document.getElementById("resetPractice");
+
+let practiceActive = false;
+let practiceIndex = 0;
+let lastPracticeMidi = null;
+
+function updatePracticeDisplay() {
+
+  const completed = practiceSequence
+    .slice(0, practiceIndex)
+    .map(note =>
+      `<span style="color:#42d98b">${note.name}</span>`
+    );
+
+  const remaining = practiceSequence
+    .slice(practiceIndex)
+    .map((note, index) => {
+
+      if (index === 0) {
+        return `<span style="color:#ffd45c">${note.name}</span>`;
+      }
+
+      return `<span style="color:#aebdca">${note.name}</span>`;
+    });
+
+  practiceSequenceDisplay.innerHTML =
+    [...completed, ...remaining].join(" → ");
+
+  practiceProgress.textContent =
+    "Notes completed: " +
+    practiceIndex +
+    " / " +
+    practiceSequence.length;
+}
+
+
+function processPracticeNote(note) {
+
+  if (!practiceActive) return;
+
+  // Don't repeatedly count a sustained note.
+  if (lastPracticeMidi === note.midi) return;
+
+  lastPracticeMidi = note.midi;
+
+  const expected = practiceSequence[practiceIndex];
+
+  if (!expected) return;
+
+  if (note.midi === expected.midi) {
+
+    practiceIndex++;
+
+    practiceFeedback.textContent =
+      "Correct! " + expected.name;
+
+    practiceFeedback.style.color = "#42d98b";
+
+    updatePracticeDisplay();
+
+    if (practiceIndex >= practiceSequence.length) {
+
+      practiceActive = false;
+
+      practiceFeedback.textContent =
+        "Excellent! You completed the practice sequence!";
+
+      practiceFeedback.style.color = "#42d98b";
+
+    }
+
+  } else {
+
+    practiceFeedback.textContent =
+      "You played " + note.name +
+      " — expected " + expected.name;
+
+    practiceFeedback.style.color = "#ff6868";
+
+  }
+
+}
+
+
+function startPractice() {
+
+  practiceIndex = 0;
+  lastPracticeMidi = null;
+  practiceActive = true;
+
+  updatePracticeDisplay();
+
+  practiceFeedback.textContent =
+    "Play C4 to begin.";
+
+  practiceFeedback.style.color = "#ffd45c";
+
+}
+
+
+function resetPractice() {
+
+  practiceActive = false;
+  practiceIndex = 0;
+  lastPracticeMidi = null;
+
+  updatePracticeDisplay();
+
+  practiceFeedback.textContent =
+    "Practice reset. Press Start Practice when ready.";
+
+  practiceFeedback.style.color = "#bdcbd6";
+
+}
+
+
+startPracticeButton.addEventListener(
+  "click",
+  startPractice
+);
+
+resetPracticeButton.addEventListener(
+  "click",
+  resetPractice
+);
+
+updatePracticeDisplay();
