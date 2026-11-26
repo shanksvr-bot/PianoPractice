@@ -303,3 +303,54 @@ footer {
     font-size: 12px;
   }
 }
+.practice-panel {
+  background: #1c2935;
+  border: 1px solid #344452;
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 22px;
+}
+
+.practice-sequence {
+  background: #101a23;
+  padding: 18px;
+  border-radius: 9px;
+  text-align: center;
+  font-size: 21px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  margin-top: 18px;
+}
+
+.practice-feedback {
+  text-align: center;
+  padding: 15px;
+  margin-top: 12px;
+  color: #bdcbd6;
+}
+
+.practice-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.practice-buttons button {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  background: #259b78;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.practice-buttons button:disabled {
+  opacity: 0.5;
+}
+
+.practice-progress {
+  text-align: center;
+  color: #aebdca;
+  font-size: 13px;
+}
