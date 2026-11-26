@@ -12,7 +12,8 @@
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
 
-  <script src="app.js?v=1" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="app.js?v=2" defer></script>
 </head>
 
 <body>
@@ -76,7 +77,55 @@
       </div>
 
     </section>
+<section class="music-panel">
 
+  <div class="section-heading">
+    <h2>My Sheet Music</h2>
+    <span class="music-label">PDF Viewer</span>
+  </div>
+
+  <p class="description">
+    Upload a PDF of your piano sheet music to begin practicing.
+  </p>
+
+  <label for="pdfUpload" class="upload-button">
+    + Upload Sheet Music
+  </label>
+
+  <input
+    type="file"
+    id="pdfUpload"
+    accept="application/pdf,.pdf"
+    hidden
+  >
+
+  <p id="pdfMessage" class="pdf-message">
+    No sheet music loaded.
+  </p>
+
+  <div id="pdfViewer" class="pdf-viewer" hidden>
+
+    <div class="pdf-controls">
+
+      <button id="previousPage" type="button" disabled>
+        ← Previous
+      </button>
+
+      <span id="pageNumber">Page 1 of 1</span>
+
+      <button id="nextPage" type="button" disabled>
+        Next →
+      </button>
+
+    </div>
+
+    <div class="pdf-page-container">
+      <canvas id="pdfCanvas"></canvas>
+    </div>
+
+  </div>
+
+</section>
     <section class="information-panel">
       <h2>How to test</h2>
 
