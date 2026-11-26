@@ -258,7 +258,7 @@ function analyzeAudio(timestamp) {
     }
   }
 }
-
+}
 
 // Start microphone.
 
