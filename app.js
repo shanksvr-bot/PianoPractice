@@ -1,0 +1,381 @@
+const startButton = document.getElementById("startButton");
+const stopButton = document.getElementById("stopButton");
+
+const connectionStatus = document.getElementById("connectionStatus");
+const message = document.getElementById("message");
+
+const noteDisplay = document.getElementById("noteDisplay");
+const frequencyDisplay = document.getElementById("frequencyDisplay");
+const confidenceDisplay = document.getElementById("confidenceDisplay");
+const noteIndicator = document.getElementById("noteIndicator");
+
+let audioContext = null;
+let analyser = null;
+let microphone = null;
+let microphoneStream = null;
+
+let audioBuffer = null;
+let running = false;
+let animationFrame = null;
+let lastAnalysis = 0;
+let lastDetectedTime = 0;
+let currentNote = null;
+
+const NOTE_NAMES = [
+  "C", "C#", "D", "D#", "E", "F",
+  "F#", "G", "G#", "A", "A#", "B"
+];
+
+function frequencyToNote(frequency) {
+
+  const midi = Math.round(
+    69 + 12 * Math.log2(frequency / 440)
+  );
+
+  const noteName = NOTE_NAMES[
+    ((midi % 12) + 12) % 12
+  ];
+
+  const octave = Math.floor(midi / 12) - 1;
+
+  const expectedFrequency =
+    440 * Math.pow(2, (midi - 69) / 12);
+
+  const cents = Math.round(
+    1200 * Math.log2(frequency / expectedFrequency)
+  );
+
+  return {
+    name: noteName + octave,
+    midi: midi,
+    cents: cents
+  };
+}
+
+
+// YIN pitch detection algorithm
+
+function detectPitch(buffer, sampleRate) {
+
+  // Reduce sample count for faster processing.
+  const size = Math.floor(buffer.length / 2);
+
+  const samples = new Float32Array(size);
+
+  let energy = 0;
+
+  for (let i = 0; i < size; i++) {
+
+    const value =
+      (buffer[i * 2] + buffer[i * 2 + 1]) / 2;
+
+    samples[i] = value;
+    energy += value * value;
+  }
+
+  const rms = Math.sqrt(energy / size);
+
+  if (rms < 0.008) {
+    return null;
+  }
+
+  const effectiveRate = sampleRate / 2;
+
+  const minFrequency = 27;
+  const maxFrequency = 1400;
+
+  const minTau = Math.floor(
+    effectiveRate / maxFrequency
+  );
+
+  const maxTau = Math.min(
+    Math.floor(effectiveRate / minFrequency),
+    Math.floor(size / 2)
+  );
+
+  const difference = new Float32Array(maxTau + 1);
+
+  for (let tau = 1; tau <= maxTau; tau++) {
+
+    let sum = 0;
+
+    for (let i = 0; i < size - maxTau; i++) {
+
+      const delta = samples[i] - samples[i + tau];
+
+      sum += delta * delta;
+    }
+
+    difference[tau] = sum;
+  }
+
+  let runningSum = 0;
+
+  const normalized = new Float32Array(maxTau + 1);
+
+  normalized[0] = 1;
+
+  for (let tau = 1; tau <= maxTau; tau++) {
+
+    runningSum += difference[tau];
+
+    normalized[tau] = runningSum === 0
+      ? 1
+      : difference[tau] * tau / runningSum;
+  }
+
+  let selectedTau = -1;
+
+  for (let tau = minTau; tau <= maxTau; tau++) {
+
+    if (normalized[tau] < 0.15) {
+
+      while (
+        tau + 1 <= maxTau &&
+        normalized[tau + 1] < normalized[tau]
+      ) {
+        tau++;
+      }
+
+      selectedTau = tau;
+      break;
+    }
+  }
+
+  if (selectedTau === -1) {
+
+    let bestValue = 0.30;
+
+    for (let tau = minTau; tau <= maxTau; tau++) {
+
+      if (normalized[tau] < bestValue) {
+        bestValue = normalized[tau];
+        selectedTau = tau;
+      }
+    }
+  }
+
+  if (selectedTau === -1) {
+    return null;
+  }
+
+  // Refine frequency using interpolation.
+
+  const left = normalized[selectedTau - 1];
+  const center = normalized[selectedTau];
+  const right = normalized[selectedTau + 1];
+
+  const denominator = left - 2 * center + right;
+
+  let adjustment = 0;
+
+  if (denominator !== 0) {
+    adjustment = 0.5 * (left - right) / denominator;
+  }
+
+  const refinedTau = selectedTau + adjustment;
+
+  const frequency = effectiveRate / refinedTau;
+
+  if (
+    frequency < minFrequency ||
+    frequency > maxFrequency
+  ) {
+    return null;
+  }
+
+  return {
+    frequency: frequency,
+    clarity: Math.max(0, 1 - center),
+    volume: rms
+  };
+}
+
+
+// Update the display.
+
+function displayNote(result) {
+
+  const note = frequencyToNote(result.frequency);
+
+  currentNote = note.name;
+  lastDetectedTime = performance.now();
+
+  noteDisplay.textContent = note.name;
+
+  frequencyDisplay.textContent =
+    result.frequency.toFixed(1) + " Hz";
+
+  confidenceDisplay.textContent =
+    "Signal quality: " +
+    Math.round(result.clarity * 100) +
+    "% | Tuning: " +
+    (note.cents >= 0 ? "+" : "") +
+    note.cents +
+    " cents";
+
+  noteIndicator.style.width =
+    Math.max(0, Math.min(100, result.clarity * 100)) + "%";
+}
+
+
+// Main audio processing loop.
+
+function analyzeAudio(timestamp) {
+
+  if (!running) return;
+
+  animationFrame = requestAnimationFrame(analyzeAudio);
+
+  // Process audio approximately 11 times per second.
+
+  if (timestamp - lastAnalysis < 90) {
+    return;
+  }
+
+  lastAnalysis = timestamp;
+
+  analyser.getFloatTimeDomainData(audioBuffer);
+
+  const result = detectPitch(
+    audioBuffer,
+    audioContext.sampleRate
+  );
+
+  if (result && result.clarity > 0.65) {
+
+    displayNote(result);
+
+  } else if (timestamp - lastDetectedTime > 500) {
+
+    noteDisplay.textContent = "--";
+    frequencyDisplay.textContent = "0.0 Hz";
+    confidenceDisplay.textContent = "Waiting for a note...";
+    noteIndicator.style.width = "0%";
+
+    currentNote = null;
+  }
+}
+
+
+// Start microphone.
+
+async function startListening() {
+
+  try {
+
+    message.textContent = "Requesting microphone access...";
+
+    microphoneStream =
+      await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
+      });
+
+    audioContext = new (
+      window.AudioContext ||
+      window.webkitAudioContext
+    )();
+
+    await audioContext.resume();
+
+    microphone =
+      audioContext.createMediaStreamSource(microphoneStream);
+
+    analyser = audioContext.createAnalyser();
+
+    analyser.fftSize = 8192;
+    analyser.smoothingTimeConstant = 0;
+
+    microphone.connect(analyser);
+
+    audioBuffer = new Float32Array(
+      analyser.fftSize
+    );
+
+    running = true;
+
+    lastAnalysis = 0;
+    lastDetectedTime = 0;
+
+    startButton.disabled = true;
+    stopButton.disabled = false;
+
+    connectionStatus.textContent = "Listening";
+    connectionStatus.className = "status connected";
+
+    message.textContent =
+      "Microphone active. Play a note on your keyboard.";
+
+    analyzeAudio();
+
+  } catch (error) {
+
+    console.error(error);
+
+    message.textContent =
+      "Microphone error: " + error.message;
+
+    stopListening();
+  }
+}
+
+
+// Stop microphone.
+
+function stopListening() {
+
+  running = false;
+
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame);
+    animationFrame = null;
+  }
+
+  if (microphoneStream) {
+
+    microphoneStream.getTracks().forEach(track => {
+      track.stop();
+    });
+
+    microphoneStream = null;
+  }
+
+  if (audioContext) {
+
+    audioContext.close();
+    audioContext = null;
+  }
+
+  microphone = null;
+  analyser = null;
+
+  startButton.disabled = false;
+  stopButton.disabled = true;
+
+  connectionStatus.textContent = "Not Listening";
+  connectionStatus.className = "status disconnected";
+
+  message.textContent = "Microphone is not active.";
+
+  noteDisplay.textContent = "--";
+  frequencyDisplay.textContent = "0.0 Hz";
+  confidenceDisplay.textContent = "Waiting for a note...";
+  noteIndicator.style.width = "0%";
+
+  currentNote = null;
+}
+
+
+startButton.addEventListener(
+  "click",
+  startListening
+);
+
+stopButton.addEventListener(
+  "click",
+  stopListening
+);
