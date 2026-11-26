@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17212b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <title>PianoPractice</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+
+  <script src="app.js?v=1" defer></script>
+</head>
+
+<body>
+
+  <header>
+    <div class="brand">
+      <span class="music-icon">♫</span>
+      <div>
+        <h1>PianoPractice</h1>
+        <p>Your personal piano practice assistant</p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <section class="connection-panel">
+      <div class="section-heading">
+        <h2>Keyboard Listening</h2>
+        <span id="connectionStatus" class="status disconnected">
+          Not Listening
+        </span>
+      </div>
+
+      <p class="description">
+        Place your iPad near your piano or keyboard.
+        Start listening to identify the notes you play.
+      </p>
+
+      <button id="startButton" class="primary-button">
+        Start Listening
+      </button>
+
+      <button id="stopButton" class="stop-button" disabled>
+        Stop Listening
+      </button>
+
+      <p id="message" class="message" aria-live="polite">
+        Microphone is not active.
+      </p>
+    </section>
+
+    <section class="note-panel">
+
+      <p class="eyebrow">CURRENTLY DETECTED NOTE</p>
+
+      <div id="noteDisplay" class="note-display">
+        --
+      </div>
+
+      <div id="frequencyDisplay" class="frequency">
+        0.0 Hz
+      </div>
+
+      <div id="confidenceDisplay" class="confidence">
+        Waiting for a note...
+      </div>
+
+      <div class="note-indicator">
+        <div id="noteIndicator"></div>
+      </div>
+
+    </section>
+
+    <section class="information-panel">
+      <h2>How to test</h2>
+
+      <ol>
+        <li>Place the iPad near your keyboard.</li>
+        <li>Press Start Listening.</li>
+        <li>Allow microphone access.</li>
+        <li>Play individual notes on your keyboard.</li>
+        <li>Watch the detected notes appear above.</li>
+      </ol>
+
+      <p class="tip">
+        Try playing middle C first. The app should identify it as C4.
+      </p>
+    </section>
+
+  </main>
+
+  <footer>
+    PianoPractice &bull; Version 1.0
+  </footer>
+
+</body>
+</html>
