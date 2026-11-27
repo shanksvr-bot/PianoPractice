@@ -871,7 +871,21 @@ function analyzeCurrentPage() {
         return (line.end - line.start) <= 12;
 
       });
+console.log(
+  "OMR line positions:",
+  usableLines.map(function(line) {
+    return Math.round(line.center);
+  })
+);
 
+console.log(
+  "OMR line gaps:",
+  usableLines.slice(1).map(function(line, index) {
+    return Math.round(
+      line.center - usableLines[index].center
+    );
+  })
+);
       // Find groups of five evenly spaced lines.
       const detectedStaffs = [];
 
