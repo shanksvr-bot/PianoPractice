@@ -818,8 +818,8 @@ function analyzeCurrentPage() {
       }
 
       // Only consider strong horizontal rows.
-const threshold = 0.65;
-);
+      const threshold = 0.65;
+
 
       const candidates = [];
 
