@@ -910,46 +910,110 @@ console.log(
     );
   })
 );
-      // Find groups of five evenly spaced lines.
-      const detectedStaffs = [];
+ // Find staff groups using expected line spacing.
+// Allow some staff lines to be missed by the pixel detector.
 
-      for (let i = 0; i <= usableLines.length - 5; i++) {
+const detectedStaffs = [];
 
-        const group = usableLines.slice(i, i + 5);
+const MIN_SPACING = 9;
+const MAX_SPACING = 13;
+const POSITION_TOLERANCE = 3;
+const MIN_MATCHES = 3;
 
-        const gaps = [];
+for (let i = 0; i < usableLines.length; i++) {
 
-        for (let j = 1; j < group.length; j++) {
-          gaps.push(
-            group[j].center - group[j - 1].center
-          );
-        }
+  const firstLine = usableLines[i];
 
-        const averageGap =
-          gaps.reduce((a, b) => a + b, 0) / gaps.length;
+  for (
+    let spacing = MIN_SPACING;
+    spacing <= MAX_SPACING;
+    spacing += 0.5
+  ) {
 
-        // Reject gaps that are too small or too large.
-        if (averageGap < 4 || averageGap > 35) {
-          continue;
-        }
+    const matchedLines = [];
+    const predictedPositions = [];
 
-        // Check that all five lines are evenly spaced.
-        const evenlySpaced = gaps.every(function(gap) {
-          return Math.abs(gap - averageGap) <
-            averageGap * 0.30;
-        });
+    // Predict all five staff-line positions.
+    for (let slot = 0; slot < 5; slot++) {
 
-        if (evenlySpaced) {
+      const predicted =
+        firstLine.center + slot * spacing;
 
-          detectedStaffs.push(group);
+      predictedPositions.push(predicted);
 
-          // Skip the five lines we just identified.
-          i += 4;
+      let bestMatch = null;
+      let bestDistance = Infinity;
+
+      for (const candidate of usableLines) {
+
+        const distance =
+          Math.abs(candidate.center - predicted);
+
+        if (
+          distance <= POSITION_TOLERANCE &&
+          distance < bestDistance
+        ) {
+          bestMatch = candidate;
+          bestDistance = distance;
         }
       }
 
-      // Flatten the staff groups into individual lines.
-      const staffLines = detectedStaffs.flat();
+      matchedLines.push(bestMatch);
+    }
+
+    const matchCount =
+      matchedLines.filter(Boolean).length;
+
+    if (matchCount >= MIN_MATCHES) {
+
+      detectedStaffs.push({
+        spacing: spacing,
+        positions: predictedPositions,
+        matches: matchCount,
+        start: firstLine.center
+      });
+    }
+  }
+}
+
+// Remove duplicate detections of the same staff.
+detectedStaffs.sort(function(a, b) {
+  return b.matches - a.matches;
+});
+
+const uniqueStaffs = [];
+
+for (const staff of detectedStaffs) {
+
+  const duplicate = uniqueStaffs.some(function(existing) {
+
+    return Math.abs(existing.start - staff.start) < 5 &&
+           Math.abs(existing.spacing - staff.spacing) < 1;
+  });
+
+  if (!duplicate) {
+    uniqueStaffs.push(staff);
+  }
+}
+
+console.table(
+  uniqueStaffs.map(function(staff, index) {
+    return {
+      Staff: index + 1,
+      FirstLine: staff.start.toFixed(1),
+      Spacing: staff.spacing.toFixed(1),
+      DetectedLines: staff.matches,
+      PredictedPositions:
+        staff.positions.map(p => Math.round(p)).join(", ")
+    };
+  })
+);
+
+omrMessage.textContent =
+  "Page " + currentPage +
+  " | Candidate staff groups: " + uniqueStaffs.length;
+
+console.log("Detected staff candidates:", uniqueStaffs);
 
       drawOMRLines(staffLines);
 
