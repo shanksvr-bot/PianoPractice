@@ -828,58 +828,72 @@ function analyzeCurrentPage() {
           candidates.push(y);
         }
       }
+// Combine neighboring pixels into individual lines.
+// Use the strongest row in each group as its center.
 
-      // Combine neighboring pixels into individual lines.
-      const lines = [];
+const lines = [];
 
-      if (candidates.length > 0) {
+function saveLine(start, end) {
 
-        let start = candidates[0];
-        let previous = candidates[0];
+  let strongestY = start;
+  let strongestScore = 0;
 
-        for (let i = 1; i < candidates.length; i++) {
+  for (let y = start; y <= end; y++) {
 
-          const current = candidates[i];
+    if (rowScores[y] > strongestScore) {
+      strongestScore = rowScores[y];
+      strongestY = y;
+    }
+  }
 
-          if (current <= previous + 6) {
-            previous = current;
-          } else {
+  lines.push({
+    start: start,
+    end: end,
+    center: strongestY,
+    strength: strongestScore
+  });
+}
 
-            lines.push({
-              start: start,
-              end: previous,
-              center: (start + previous) / 2
-            });
+if (candidates.length > 0) {
 
-            start = current;
-            previous = current;
-          }
-        }
+  let start = candidates[0];
+  let previous = candidates[0];
 
-        lines.push({
-          start: start,
-          end: previous,
-          center: (start + previous) / 2
-        });
-      }
+  for (let i = 1; i < candidates.length; i++) {
 
-      // Keep thin horizontal marks only.
-      const usableLines = lines.filter(function(line) {
-        return (line.end - line.start) <= 12;
-      });
+    const current = candidates[i];
+
+    if (current <= previous + 6) {
+
+      previous = current;
+
+    } else {
+
+      saveLine(start, previous);
+
+      start = current;
+      previous = current;
+    }
+  }
+
+  saveLine(start, previous);
+}
+
+// Keep thin horizontal marks only.
+const usableLines = lines.filter(function(line) {
+  return (line.end - line.start) <= 12;
+});
 console.table(
   usableLines.map(function(line, index) {
-    const y = Math.round(line.center);
 
     return {
       Line: index + 1,
-      Position: y,
+      Position: line.center,
       Thickness: line.end - line.start + 1,
-      Strength: rowScores[y].toFixed(3)
+      Strength: line.strength.toFixed(3)
     };
   })
 );
-
       
 console.log(
   "OMR line positions:",
