@@ -818,9 +818,7 @@ function analyzeCurrentPage() {
       }
 
       // Only consider strong horizontal rows.
-const threshold = Math.max(
-  0.04,
-  maxScore * 0.12
+const threshold = 0.65;
 );
 
       const candidates = [];
@@ -843,7 +841,7 @@ const threshold = Math.max(
 
           const current = candidates[i];
 
-          if (current <= previous + 3) {
+          if (current <= previous + 6) {
             previous = current;
           } else {
 
