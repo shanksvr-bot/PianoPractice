@@ -807,7 +807,7 @@ function analyzeCurrentPage() {
              data[index + 1] +
              data[index + 2]) / 3;
 
-          if (brightness < 150) {
+          if (brightness < 180) {
             darkPixels++;
           }
         }
@@ -818,10 +818,10 @@ function analyzeCurrentPage() {
       }
 
       // Only consider strong horizontal rows.
-      const threshold = Math.max(
-        0.08,
-        maxScore * 0.25
-      );
+const threshold = Math.max(
+  0.04,
+  maxScore * 0.12
+);
 
       const candidates = [];
 
