@@ -819,8 +819,8 @@ function analyzeCurrentPage() {
 
       // Only consider strong horizontal rows.
       const threshold = Math.max(
-        0.25,
-        maxScore * 0.55
+        0.08,
+        maxScore * 0.25
       );
 
       const candidates = [];
@@ -868,7 +868,7 @@ function analyzeCurrentPage() {
       // Keep thin horizontal marks only.
       const usableLines = lines.filter(function(line) {
 
-        return (line.end - line.start) <= 5;
+        return (line.end - line.start) <= 12;
 
       });
 
@@ -916,11 +916,12 @@ function analyzeCurrentPage() {
       drawOMRLines(staffLines);
 
       omrMessage.textContent =
-        "Page " + currentPage +
-        " | Staff groups detected: " +
-        detectedStaffs.length +
-        " | Staff lines detected: " +
-        staffLines.length;
+  "Page " + currentPage +
+  " | Max row score: " + (maxScore * 100).toFixed(1) + "%" +
+  " | Candidate rows: " + candidates.length +
+  " | Line groups: " + lines.length +
+  " | Usable lines: " + usableLines.length +
+  " | Staff groups: " + detectedStaffs.length;
 
     } catch (error) {
 
