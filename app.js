@@ -750,3 +750,207 @@ resetPracticeButton.addEventListener(
 );
 
 updatePracticeDisplay();
+// ======================================
+// SHEET MUSIC OMR - STAFF LINE TEST
+// ======================================
+
+const analyzePageButton =
+  document.getElementById("analyzePageButton");
+
+const omrMessage =
+  document.getElementById("omrMessage");
+
+
+function analyzeCurrentPage() {
+
+  if (!pdfDocument) {
+    omrMessage.textContent =
+      "Please load a sheet music PDF first.";
+    return;
+  }
+
+  omrMessage.textContent =
+    "Analyzing page " + currentPage + "...";
+
+  analyzePageButton.disabled = true;
+
+  setTimeout(function() {
+
+    try {
+
+      const imageData =
+        pdfContext.getImageData(
+          0,
+          0,
+          pdfCanvas.width,
+          pdfCanvas.height
+        );
+
+      const width = imageData.width;
+      const height = imageData.height;
+      const data = imageData.data;
+
+      const rowScores = new Float32Array(height);
+
+      // Measure how dark each horizontal row is.
+      for (let y = 0; y < height; y++) {
+
+        let darkPixels = 0;
+
+        for (let x = 0; x < width; x++) {
+
+          const index =
+            (y * width + x) * 4;
+
+          const r = data[index];
+          const g = data[index + 1];
+          const b = data[index + 2];
+
+          const brightness =
+            (r + g + b) / 3;
+
+          if (brightness < 100) {
+            darkPixels++;
+          }
+        }
+
+        rowScores[y] =
+          darkPixels / width;
+      }
+
+      // Find rows containing strong horizontal lines.
+      const candidates = [];
+
+      for (let y = 0; y < height; y++) {
+
+        if (rowScores[y] > 0.20) {
+          candidates.push(y);
+        }
+      }
+
+      // Combine adjacent rows into individual lines.
+      const lines = [];
+
+      if (candidates.length > 0) {
+
+        let start = candidates[0];
+        let previous = candidates[0];
+
+        for (let i = 1; i < candidates.length; i++) {
+
+          const current = candidates[i];
+
+          if (current <= previous + 2) {
+
+            previous = current;
+
+          } else {
+
+            lines.push({
+              start: start,
+              end: previous,
+              center: (start + previous) / 2
+            });
+
+            start = current;
+            previous = current;
+          }
+        }
+
+        lines.push({
+          start: start,
+          end: previous,
+          center: (start + previous) / 2
+        });
+      }
+
+      // Keep only reasonably thin horizontal lines.
+      const usableLines = lines.filter(function(line) {
+
+        const thickness =
+          line.end - line.start + 1;
+
+        return thickness <= 8;
+
+      });
+
+      // Draw detected lines over the PDF.
+      drawOMRLines(usableLines);
+
+      omrMessage.textContent =
+        "Detected " +
+        usableLines.length +
+        " horizontal staff-line candidates on page " +
+        currentPage +
+        ".";
+
+    } catch (error) {
+
+      console.error("OMR analysis error:", error);
+
+      omrMessage.textContent =
+        "OMR analysis failed: " +
+        error.message;
+
+    }
+
+    analyzePageButton.disabled = false;
+
+  }, 50);
+}
+
+
+function drawOMRLines(lines) {
+
+  // Remove an existing overlay.
+  const oldOverlay =
+    document.getElementById("omrOverlay");
+
+  if (oldOverlay) {
+    oldOverlay.remove();
+  }
+
+  const overlay =
+    document.createElement("canvas");
+
+  overlay.id = "omrOverlay";
+
+  overlay.width = pdfCanvas.width;
+  overlay.height = pdfCanvas.height;
+
+  overlay.style.position = "absolute";
+  overlay.style.left = pdfCanvas.offsetLeft + "px";
+  overlay.style.top = pdfCanvas.offsetTop + "px";
+  overlay.style.width = pdfCanvas.style.width;
+  overlay.style.height = pdfCanvas.style.height;
+
+  overlay.style.pointerEvents = "none";
+
+  const context =
+    overlay.getContext("2d");
+
+  context.lineWidth = 2;
+
+  context.strokeStyle = "#00ff88";
+
+  for (const line of lines) {
+
+    context.beginPath();
+
+    context.moveTo(0, line.center);
+    context.lineTo(overlay.width, line.center);
+
+    context.stroke();
+  }
+
+  pdfCanvas.parentElement.style.position =
+    "relative";
+
+  pdfCanvas.parentElement.appendChild(overlay);
+}
+
+
+analyzePageButton.addEventListener(
+  "click",
+  analyzeCurrentPage
+);
