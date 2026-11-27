@@ -910,8 +910,8 @@ console.log(
     );
   })
 );
- // Find staff groups using expected line spacing.
-// Allow some staff lines to be missed by the pixel detector.
+// Find staff groups using expected line spacing.
+// Allow some staff lines to be missed.
 
 const detectedStaffs = [];
 
@@ -924,6 +924,19 @@ for (let i = 0; i < usableLines.length; i++) {
 
   const firstLine = usableLines[i];
 
+  // Skip lines that are likely the second line
+  // of a staff candidate already being examined.
+  const hasPreviousLine = usableLines
+    .slice(0, i)
+    .some(function(previous) {
+
+      const gap = firstLine.center - previous.center;
+
+      return gap >= MIN_SPACING && gap <= MAX_SPACING;
+    });
+
+  if (hasPreviousLine) continue;
+
   for (
     let spacing = MIN_SPACING;
     spacing <= MAX_SPACING;
@@ -933,7 +946,6 @@ for (let i = 0; i < usableLines.length; i++) {
     const matchedLines = [];
     const predictedPositions = [];
 
-    // Predict all five staff-line positions.
     for (let slot = 0; slot < 5; slot++) {
 
       const predicted =
@@ -976,7 +988,7 @@ for (let i = 0; i < usableLines.length; i++) {
   }
 }
 
-// Remove duplicate detections of the same staff.
+// Remove duplicate detections.
 detectedStaffs.sort(function(a, b) {
   return b.matches - a.matches;
 });
@@ -998,6 +1010,7 @@ for (const staff of detectedStaffs) {
 
 console.table(
   uniqueStaffs.map(function(staff, index) {
+
     return {
       Staff: index + 1,
       FirstLine: staff.start.toFixed(1),
@@ -1009,22 +1022,27 @@ console.table(
   })
 );
 
-omrMessage.textContent =
-  "Page " + currentPage +
-  " | Candidate staff groups: " + uniqueStaffs.length;
-
 console.log("Detected staff candidates:", uniqueStaffs);
 
-      drawOMRLines(staffLines);
+// Convert the five predicted positions of each staff
+// into line objects that drawOMRLines() can use.
+const staffLines = uniqueStaffs.flatMap(function(staff) {
 
-      omrMessage.textContent =
+  return staff.positions.map(function(position) {
+    return {
+      center: position
+    };
+  });
+
+});
+
+// Draw the detected and predicted staff lines.
+drawOMRLines(staffLines);
+
+omrMessage.textContent =
   "Page " + currentPage +
-  " | Max row score: " + (maxScore * 100).toFixed(1) + "%" +
-  " | Candidate rows: " + candidates.length +
-  " | Line groups: " + lines.length +
-  " | Usable lines: " + usableLines.length +
-  " | Staff groups: " + detectedStaffs.length;
-
+  " | Candidate staff groups: " + uniqueStaffs.length +
+  " | Staff lines drawn: " + staffLines.length;
     } catch (error) {
 
       console.error("OMR analysis error:", error);
