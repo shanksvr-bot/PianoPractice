@@ -867,10 +867,22 @@ const threshold = Math.max(
 
       // Keep thin horizontal marks only.
       const usableLines = lines.filter(function(line) {
-
         return (line.end - line.start) <= 12;
-
       });
+console.table(
+  usableLines.map(function(line, index) {
+    const y = Math.round(line.center);
+
+    return {
+      Line: index + 1,
+      Position: y,
+      Thickness: line.end - line.start + 1,
+      Strength: rowScores[y].toFixed(3)
+    };
+  })
+);
+
+      
 console.log(
   "OMR line positions:",
   usableLines.map(function(line) {
