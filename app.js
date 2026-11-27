@@ -778,6 +778,138 @@ function analyzeCurrentPage() {
 
     try {
 
+      const imageData = pdfContext.getImageData(
+        0,
+        0,
+        pdfCanvas.width,
+        pdfCanvas.height
+      );
+
+      const width = imageData.width;
+      const height = imageData.height;
+      const data = imageData.data;
+
+      const rowScores = new Float32Array(height);
+
+      let maxScore = 0;
+
+      // Measure darkness across each horizontal row.
+      for (let y = 0; y < height; y++) {
+
+        let darkPixels = 0;
+
+        for (let x = 0; x < width; x++) {
+
+          const index = (y * width + x) * 4;
+
+          const brightness =
+            (data[index] +
+             data[index + 1] +
+             data[index + 2]) / 3;
+
+          if (brightness < 180) {
+            darkPixels++;
+          }
+        }
+
+        rowScores[y] = darkPixels / width;
+
+        if (rowScores[y] > maxScore) {
+          maxScore = rowScores[y];
+        }
+      }
+
+      // Use a more forgiving threshold.
+      const threshold = Math.max(
+        0.04,
+        maxScore * 0.35
+      );
+
+      const candidates = [];
+
+      for (let y = 0; y < height; y++) {
+
+        if (rowScores[y] >= threshold) {
+          candidates.push(y);
+        }
+      }
+
+      // Group nearby rows.
+      const lines = [];
+
+      if (candidates.length > 0) {
+
+        let start = candidates[0];
+        let previous = candidates[0];
+
+        for (let i = 1; i < candidates.length; i++) {
+
+          const current = candidates[i];
+
+          if (current <= previous + 3) {
+
+            previous = current;
+
+          } else {
+
+            lines.push({
+              start: start,
+              end: previous,
+              center: (start + previous) / 2
+            });
+
+            start = current;
+            previous = current;
+          }
+        }
+
+        lines.push({
+          start: start,
+          end: previous,
+          center: (start + previous) / 2
+        });
+      }
+
+      // Remove excessively thick groups.
+      const usableLines = lines.filter(function(line) {
+
+        return (line.end - line.start) <= 20;
+
+      });
+
+      drawOMRLines(usableLines);
+
+      omrMessage.textContent =
+        "Page " + currentPage +
+        " | Maximum row score: " +
+        (maxScore * 100).toFixed(1) +
+        "%" +
+        " | Candidates: " + candidates.length +
+        " | Detected line groups: " + usableLines.length;
+
+    } catch (error) {
+
+      console.error("OMR analysis error:", error);
+
+      omrMessage.textContent =
+        "OMR analysis failed: " + error.message;
+
+    }
+
+    analyzePageButton.disabled = false;
+
+  }, 50);
+}
+
+  omrMessage.textContent =
+    "Analyzing page " + currentPage + "...";
+
+  analyzePageButton.disabled = true;
+
+  setTimeout(function() {
+
+    try {
+
       const imageData =
         pdfContext.getImageData(
           0,
