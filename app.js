@@ -770,7 +770,7 @@ function analyzeCurrentPage() {
   }
 
   omrMessage.textContent =
-    "Analyzing page " + currentPage + "...";
+    "Analyzing staff lines on page " + currentPage + "...";
 
   analyzePageButton.disabled = true;
 
@@ -793,7 +793,7 @@ function analyzeCurrentPage() {
 
       let maxScore = 0;
 
-      // Measure darkness across each horizontal row.
+      // Measure how much of each row contains dark pixels.
       for (let y = 0; y < height; y++) {
 
         let darkPixels = 0;
@@ -807,34 +807,31 @@ function analyzeCurrentPage() {
              data[index + 1] +
              data[index + 2]) / 3;
 
-          if (brightness < 180) {
+          if (brightness < 150) {
             darkPixels++;
           }
         }
 
         rowScores[y] = darkPixels / width;
 
-        if (rowScores[y] > maxScore) {
-          maxScore = rowScores[y];
-        }
+        maxScore = Math.max(maxScore, rowScores[y]);
       }
 
-      // Use a more forgiving threshold.
+      // Only consider strong horizontal rows.
       const threshold = Math.max(
-        0.04,
-        maxScore * 0.35
+        0.25,
+        maxScore * 0.55
       );
 
       const candidates = [];
 
       for (let y = 0; y < height; y++) {
-
         if (rowScores[y] >= threshold) {
           candidates.push(y);
         }
       }
 
-      // Group nearby rows.
+      // Combine neighboring pixels into individual lines.
       const lines = [];
 
       if (candidates.length > 0) {
@@ -847,9 +844,7 @@ function analyzeCurrentPage() {
           const current = candidates[i];
 
           if (current <= previous + 3) {
-
             previous = current;
-
           } else {
 
             lines.push({
@@ -870,22 +865,62 @@ function analyzeCurrentPage() {
         });
       }
 
-      // Remove excessively thick groups.
+      // Keep thin horizontal marks only.
       const usableLines = lines.filter(function(line) {
 
-        return (line.end - line.start) <= 20;
+        return (line.end - line.start) <= 5;
 
       });
 
-      drawOMRLines(usableLines);
+      // Find groups of five evenly spaced lines.
+      const detectedStaffs = [];
+
+      for (let i = 0; i <= usableLines.length - 5; i++) {
+
+        const group = usableLines.slice(i, i + 5);
+
+        const gaps = [];
+
+        for (let j = 1; j < group.length; j++) {
+          gaps.push(
+            group[j].center - group[j - 1].center
+          );
+        }
+
+        const averageGap =
+          gaps.reduce((a, b) => a + b, 0) / gaps.length;
+
+        // Reject gaps that are too small or too large.
+        if (averageGap < 4 || averageGap > 35) {
+          continue;
+        }
+
+        // Check that all five lines are evenly spaced.
+        const evenlySpaced = gaps.every(function(gap) {
+          return Math.abs(gap - averageGap) <
+            averageGap * 0.30;
+        });
+
+        if (evenlySpaced) {
+
+          detectedStaffs.push(group);
+
+          // Skip the five lines we just identified.
+          i += 4;
+        }
+      }
+
+      // Flatten the staff groups into individual lines.
+      const staffLines = detectedStaffs.flat();
+
+      drawOMRLines(staffLines);
 
       omrMessage.textContent =
         "Page " + currentPage +
-        " | Maximum row score: " +
-        (maxScore * 100).toFixed(1) +
-        "%" +
-        " | Candidates: " + candidates.length +
-        " | Detected line groups: " + usableLines.length;
+        " | Staff groups detected: " +
+        detectedStaffs.length +
+        " | Staff lines detected: " +
+        staffLines.length;
 
     } catch (error) {
 
@@ -893,7 +928,6 @@ function analyzeCurrentPage() {
 
       omrMessage.textContent =
         "OMR analysis failed: " + error.message;
-
     }
 
     analyzePageButton.disabled = false;
@@ -905,53 +939,24 @@ function analyzeCurrentPage() {
 
 function drawOMRLines(lines) {
 
-  // Remove an existing overlay.
-  const oldOverlay =
-    document.getElementById("omrOverlay");
+  // Draw directly onto the PDF canvas.
+  pdfContext.save();
 
-  if (oldOverlay) {
-    oldOverlay.remove();
-  }
-
-  const overlay =
-    document.createElement("canvas");
-
-  overlay.id = "omrOverlay";
-
-  overlay.width = pdfCanvas.width;
-  overlay.height = pdfCanvas.height;
-
-  overlay.style.position = "absolute";
-  overlay.style.left = pdfCanvas.offsetLeft + "px";
-  overlay.style.top = pdfCanvas.offsetTop + "px";
-  overlay.style.width = pdfCanvas.style.width;
-  overlay.style.height = pdfCanvas.style.height;
-
-  overlay.style.pointerEvents = "none";
-
-  const context =
-    overlay.getContext("2d");
-
-  context.lineWidth = 2;
-
-  context.strokeStyle = "#00ff88";
+  pdfContext.strokeStyle = "#00ff88";
+  pdfContext.lineWidth = 3;
 
   for (const line of lines) {
 
-    context.beginPath();
+    pdfContext.beginPath();
 
-    context.moveTo(0, line.center);
-    context.lineTo(overlay.width, line.center);
+    pdfContext.moveTo(0, line.center);
+    pdfContext.lineTo(pdfCanvas.width, line.center);
 
-    context.stroke();
+    pdfContext.stroke();
   }
 
-  pdfCanvas.parentElement.style.position =
-    "relative";
-
-  pdfCanvas.parentElement.appendChild(overlay);
+  pdfContext.restore();
 }
-
 
 analyzePageButton.addEventListener(
   "click",
